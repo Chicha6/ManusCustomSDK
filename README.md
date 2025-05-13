@@ -1,5 +1,5 @@
 Setup Guide
-1. Download MANUS Core 3 and MANUS Core 3 - SDK from https://my.manus-meta.com/resources/downloads/quantum-metagloves
+1. Download MANUS Core 2 and MANUS Core 2 - SDK from https://my.manus-meta.com/resources/downloads/quantum-metagloves
 2. Navigate to SDKMinimalClient_Windows subfolder and locate the SDKMinimalClient.cpp and SDKMinimalClient.hpp files
 3. Replace the 2 files from the previous step with the ones in this repo
 4. Open the .vcxproj file in /SDKMinimalClient_Windows with Visual Studio (install Visual Studio if you have not) 
