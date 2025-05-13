@@ -15,7 +15,15 @@ Setup Guide
 7. Launch the executable
 8. ![image](https://github.com/user-attachments/assets/a197d419-315e-4678-89a0-6e6e93ec81f2)
 9. Press 2 for local and enter
-10. ![image](https://github.com/user-attachments/assets/990afd45-7514-4b40-96c0-c24028e2ede8)
+10. ![image](https://github.com/user-attachments/assets/28f693e5-d12b-4dd3-b1b6-88240dfa890f)
+    - Select data to be streamed that corresponds to the [mode of robot hand control](https://github.com/Chicha6/LEAPHand/blob/main/README.md)
+        - Joint position for IK robot hand control
+        - Joint angles for FK robot hand control
+        - Combined data for combined IK and FK robot hand control
+12. Upon mode selection, data will be streamed to the socket and to be received by the LEAP HAND python API
+13. You can start running [LEAP Hand python API](https://github.com/Chicha6/LEAPHand/tree/main/python) 
+
+    
     
 
 
