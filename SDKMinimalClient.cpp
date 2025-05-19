@@ -1,5 +1,4 @@
 // SDKMinimalClient.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
 
 #include "SDKMinimalClient.hpp"
 #include "ManusSDk/include/ManusSDKTypes.h"
@@ -64,11 +63,10 @@ ClientReturnCode SDKMinimalClient::Initialize()
 
 	//ZMQ
 	ctx = zmq::context_t(); // Initialize context
-	sockRaw = zmq::socket_t(ctx, zmq::socket_type::push); // Initialize socket
+	sockRaw = zmq::socket_t(ctx, zmq::socket_type::push); // Initialize socket for raw skeleton data
 	sockRaw.bind("tcp://127.0.0.1:8000");
-	sockErgo = zmq::socket_t(ctx, zmq::socket_type::push); // Initialize socket
+	sockErgo = zmq::socket_t(ctx, zmq::socket_type::push); // Initialize socket for ergonoimc data
 	sockErgo.bind("tcp://127.0.0.1:9000");
-
 	//ZMQ
 
 	return ClientReturnCode::ClientReturnCode_Success;
@@ -104,7 +102,7 @@ ClientReturnCode SDKMinimalClient::InitializeSDK()
 	
 
 	// Connection type set to local for convenience
-	//m_ConnectionType = ConnectionType::ConnectionType_Local;
+	// m_ConnectionType = ConnectionType::ConnectionType_Local;
 
 	// Invalid connection type detected
 	if (m_ConnectionType == ConnectionType::ConnectionType_Invalid
@@ -445,45 +443,32 @@ void SDKMinimalClient::OnRawSkeletonStreamCallback(const SkeletonStreamInfo* con
 			char char_buf_3[4096] = { 0 };
 			char* pos3 = char_buf_3;
 			int leng3 = 0;
-			//these are the nodes of focus for inverse kinematics (dip joint and fingertip of thumb, index, middle)
+			//These are the nodes of focus for inverse kinematics (DIP and fingertip of thumb, index, middle)
 			uint8_t part_ids[] = {3, 4, 8, 9, 13, 14};
-			uint8_t part_ids_thumb[] = {3, 4};
 
 			for (unsigned int j = 0; j < p_RawSkeletonStreamInfo->skeletonsCount; j++) {
 				int t_leng = sprintf(pos3, "%x,", s_Instance->m_NextRawSkeleton->skeletons[j].info.gloveId);
 
 				pos3 = pos3 + t_leng;
 				leng3 = leng3 + t_leng;
-				//If you set this to false then you send just the data needed for dex-cap style retargeting, the xyz of the last two joints of each finger.
+				//If you set this to false then you send just the data needed for dex-cap style retargeting, the xyz of the last two nodes of each finger.
 				//compiling raw skeleton data for zmq message
-				if (isRawErgoCombined) {
-					//Compiles only thumb data
-					for (unsigned int i = 0; i < sizeof(part_ids); i++) {
-						int node_index = part_ids[i];
-						ManusVec3 position_glove = s_Instance->m_NextRawSkeleton->skeletons[j].nodes[node_index].transform.position;
 
-						int t_leng = sprintf(pos3, "%.3f,%.3f,%.3f,", position_glove.x, position_glove.y, position_glove.z);
-						pos3 = pos3 + t_leng;
-						leng3 = leng3 + t_leng;
-					}
-				}
-				else {
-					//Compiles thumb, index and middle data
-					for (unsigned int i = 0; i < sizeof(part_ids); i++) {
-						int node_index = part_ids[i];
-						ManusVec3 position_glove = s_Instance->m_NextRawSkeleton->skeletons[j].nodes[node_index].transform.position;
+				for (unsigned int i = 0; i < sizeof(part_ids); i++) {
+					int node_index = part_ids[i];
+					ManusVec3 position_glove = s_Instance->m_NextRawSkeleton->skeletons[j].nodes[node_index].transform.position;
 
-						int t_leng = sprintf(pos3, "%.3f,%.3f,%.3f,", position_glove.x, position_glove.y, position_glove.z);
-						pos3 = pos3 + t_leng;
-						leng3 = leng3 + t_leng;
-						if (node_index == 14) {
-							ClientLog::print("Node {} x position:{}", node_index, position_glove.x);
-						}
+					int t_leng = sprintf(pos3, "%.3f,%.3f,%.3f,", position_glove.x, position_glove.y, position_glove.z);
+					pos3 = pos3 + t_leng;
+					leng3 = leng3 + t_leng;
+
+					if (node_index == 4) {
+						ClientLog::print("Node {} of {} x position:{}", node_index, s_Instance->m_NextRawSkeleton->skeletons[j].info.gloveId, position_glove.x);
 					}
 				}
 			}
 			leng3 += -1;
-			s_Instance->sockRaw.send(zmq::buffer(char_buf_3, leng3), zmq::send_flags::dontwait);
+			s_Instance->sockRaw.send(zmq::buffer(char_buf_3, leng3), zmq::send_flags::dontwait); //send data
 			//ZMQ
 		}
 		catch (...) {
@@ -534,25 +519,32 @@ void SDKMinimalClient::OnErgonomicsCallback(const ErgonomicsStream* const p_Ergo
 				//Compiles only index and middle
 				txt_leng = sprintf(s_Instance->char_buf, "%x,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%x,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
 					l_ergo->id, 
-					l_ergo->data[5], l_ergo->data[4], l_ergo->data[6], l_ergo->data[7], 
-					l_ergo->data[9], l_ergo->data[8], l_ergo->data[10], l_ergo->data[11],
+					l_ergo->data[5], l_ergo->data[4], l_ergo->data[6], l_ergo->data[7],     //index 
+					l_ergo->data[9], l_ergo->data[8], l_ergo->data[10], l_ergo->data[11],   //middle
 					r_ergo->id, 
-					r_ergo->data[25], r_ergo->data[24], r_ergo->data[26], r_ergo->data[27], 
-					r_ergo->data[29], r_ergo->data[28], r_ergo->data[30], r_ergo->data[31]);
-			}
+					r_ergo->data[25], r_ergo->data[24], r_ergo->data[26], r_ergo->data[27],    //index 
+					r_ergo->data[29], r_ergo->data[28], r_ergo->data[30], r_ergo->data[31]);   //middle
+
+				ClientLog::print("Left middle finger splay:{}", l_ergo->data[9]);
+				ClientLog::print("Right middle finger splay:{}", r_ergo->data[29]);
+				
+			}	
 			else {
 				//Compiles thumb, index and middle
 				txt_leng = sprintf(s_Instance->char_buf, "%x,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%x,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f,%.3f",
 					l_ergo->id, 
-					l_ergo->data[0], l_ergo->data[1], l_ergo->data[2], l_ergo->data[3], 
-					l_ergo->data[4], l_ergo->data[5], l_ergo->data[6], l_ergo->data[7], 
-					l_ergo->data[8], l_ergo->data[9], l_ergo->data[10], l_ergo->data[11],
+					l_ergo->data[1], l_ergo->data[0], l_ergo->data[2], l_ergo->data[3],     //thumb
+					l_ergo->data[5], l_ergo->data[4], l_ergo->data[6], l_ergo->data[7],     //index
+					l_ergo->data[9], l_ergo->data[8], l_ergo->data[10], l_ergo->data[11],   //middle
 					r_ergo->id, 
-					r_ergo->data[20], r_ergo->data[21], r_ergo->data[22], r_ergo->data[23], 
-					r_ergo->data[24], r_ergo->data[25], r_ergo->data[26], r_ergo->data[27], 
-					r_ergo->data[28], r_ergo->data[29], r_ergo->data[30], r_ergo->data[31]);
+					r_ergo->data[21], r_ergo->data[20], r_ergo->data[22], r_ergo->data[23],    //thumb
+					r_ergo->data[25], r_ergo->data[24], r_ergo->data[26], r_ergo->data[27],    //index
+					r_ergo->data[29], r_ergo->data[28], r_ergo->data[30], r_ergo->data[31]);   //middle
+
+				ClientLog::print("Left middle finger splay:{}", l_ergo->data[9]);
+				ClientLog::print("Right middle finger splay:{}", r_ergo->data[29]);
 			}
-			s_Instance->sockErgo.send(zmq::buffer(s_Instance->char_buf, txt_leng), zmq::send_flags::dontwait);
+			s_Instance->sockErgo.send(zmq::buffer(s_Instance->char_buf, txt_leng), zmq::send_flags::dontwait); //send data 
 		}
 		catch (...) {
 			ClientLog::print("Send Failed");
